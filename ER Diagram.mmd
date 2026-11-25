@@ -1,0 +1,233 @@
+erDiagram
+
+    users {
+        uuid id PK
+        varchar name
+        varchar phone_number
+        varchar email
+        varchar status "ACTIVE, BLOCKED"
+        varchar user_type "CUSTOMER, AGENT, ADMIN, SUPPORT_EMPLOYEE"
+    }
+
+    customers {
+        uuid user_id PK, FK
+        varchar verification_level "BASIC, VERIFIED"
+    }
+
+    agents {
+        uuid user_id PK, FK
+        varchar agent_code UK
+        varchar shop_name
+    }
+
+    wallets {
+        uuid id PK
+        uuid user_id FK, UK
+        varchar currency
+    }
+
+    ledger_entries {
+        uuid id PK
+        uuid wallet_id FK
+        uuid payment_id FK "nullable"
+        decimal amount
+        varchar entry_type "TOPUP, HOLD, HOLD_RELEASE, CHARGE, FEE_INCOME, COMMISSION, REFUND"
+        varchar balance_bucket
+        varchar reference
+        timestamp created_at
+    }
+
+    holds {
+        uuid id PK
+        uuid wallet_id FK
+        uuid payment_id FK, UK
+        decimal amount
+        varchar status "ACTIVE, RELEASED, CONFIRMED"
+        timestamp created_at
+    }
+
+    billers {
+        uuid id PK
+        varchar code UK
+        varchar name
+        varchar category "ELECTRICITY, WATER, MOBILE, INTERNET"
+        boolean active
+    }
+
+    biller_services {
+        uuid id PK
+        uuid biller_id FK
+        uuid fee_strategy_id FK
+        varchar name
+        decimal min_amount
+        decimal max_amount
+        boolean active
+    }
+
+    input_fields {
+        uuid id PK
+        uuid biller_service_id FK
+        varchar name
+        varchar label
+        varchar type
+        boolean required
+    }
+
+    payments {
+        uuid id PK
+        varchar reference UK
+        uuid customer_id FK
+        uuid agent_id FK "nullable"
+        uuid biller_service_id FK
+        decimal amount
+        decimal fee
+        decimal total_amount
+        varchar state "INITIATED, FUNDS_HELD, SENT_TO_BILLER, COMPLETED, FAILED, UNKNOWN, REJECTED, REFUNDED"
+        timestamp created_at
+    }
+
+    idempotency_records {
+        varchar idempotency_key PK
+        uuid payment_id FK, UK
+        varchar request_hash
+        varchar response_snapshot
+        timestamp created_at
+    }
+
+    payment_attempts {
+        uuid id PK
+        uuid payment_id FK
+        int attempt_number
+        timestamp scheduled_at
+        varchar result
+    }
+
+    biller_callbacks {
+        uuid id PK
+        uuid payment_id FK
+        varchar external_reference
+        varchar status
+        timestamp received_at
+    }
+
+    fee_strategies {
+        uuid id PK
+        varchar strategy_type "FIXED, PERCENTAGE, TIERED, PROMOTION"
+        uuid wrapped_strategy_id FK "nullable"
+        timestamp start_date "nullable"
+        timestamp end_date "nullable"
+    }
+
+    commissions {
+        uuid id PK
+        uuid payment_id FK, UK
+        uuid agent_id FK
+        decimal amount
+        timestamp created_at
+    }
+
+    notifications {
+        uuid id PK
+        uuid payment_id FK
+        uuid message_template_id FK
+        varchar channel "SMS, EMAIL, PUSH"
+        varchar recipient
+        varchar message
+        varchar status "PENDING, SENT, UNDELIVERED"
+        int retry_count
+        timestamp created_at
+    }
+
+    message_templates {
+        uuid id PK
+        varchar code
+        varchar language
+        varchar body
+    }
+
+    settlement_files {
+        uuid id PK
+        varchar biller_code
+        timestamp file_date
+        varchar status
+    }
+
+    settlement_records {
+        uuid id PK
+        uuid settlement_file_id FK
+        uuid payment_id FK, UK "nullable"
+        varchar biller_reference
+        decimal amount
+        varchar status
+    }
+
+    reconciliation_reports {
+        uuid id PK
+        timestamp run_date
+    }
+
+    reconciliation_differences {
+        uuid id PK
+        uuid reconciliation_report_id FK
+        uuid payment_id FK "nullable"
+        varchar type
+        varchar notes
+        boolean reviewed
+    }
+
+    audit_logs {
+        uuid id PK
+        uuid actor_id FK
+        varchar action
+        varchar reason
+        timestamp created_at
+        varchar details
+    }
+
+    configuration_values {
+        varchar config_key PK
+        varchar config_value
+    }
+
+    %% Inheritance
+    users ||--o| customers : "is_a"
+    users ||--o| agents : "is_a"
+
+    %% Accounts and Wallet
+    users ||..o| wallets : owns
+
+    wallets ||--o{ ledger_entries : contains
+    wallets ||--o{ holds : contains
+    payments |o..o{ ledger_entries : relates_to
+    payments ||..o| holds : reserves
+
+    %% Biller Catalog
+    billers ||--|{ biller_services : offers
+    biller_services ||--o{ input_fields : requires
+    fee_strategies ||..o{ biller_services : applied_to
+    fee_strategies |o..o{ fee_strategies : wrapped_by
+
+    %% Payment Processing
+    customers ||..o{ payments : paid_by
+    agents |o..o{ payments : initiated_by
+    biller_services ||..o{ payments : paid_for
+    payments ||..|| idempotency_records : identified_by
+    payments ||--o{ payment_attempts : has
+    payments ||..o| commissions : earns
+    agents ||..o{ commissions : credited_to
+
+    %% Biller Integration
+    payments ||..o{ biller_callbacks : updated_by
+
+    %% Notifications
+    payments ||..o{ notifications : triggers
+    message_templates ||..o{ notifications : formats
+
+    %% Reconciliation
+    settlement_files ||--o{ settlement_records : contains
+    payments |o..o| settlement_records : matched_by
+    reconciliation_reports ||--o{ reconciliation_differences : contains
+    payments |o..o{ reconciliation_differences : concerned_in
+
+    %% Audit
+    users ||..o{ audit_logs : performed_by
