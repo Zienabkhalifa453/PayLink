@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PayLink Phase 1 Report</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  :root { --ink:#1d2433; --muted:#5b6475; --line:#d9dde5; --accent:#1f5fbf; --soft:#f3f6fb; --todo:#fff4cc; --todo-line:#e0b400; --ok:#1e7a3c; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.45; margin: 0; background:#fff; }
+  h1 { font-size: 24pt; margin: 0 0 4pt; color: var(--accent); }
+  h2 { font-size: 15pt; margin: 18pt 0 6pt; padding-bottom: 3pt; border-bottom: 2px solid var(--accent); page-break-after: avoid; }
+  h3 { font-size: 12pt; margin: 12pt 0 4pt; page-break-after: avoid; }
+  p { margin: 4pt 0 6pt; }
+  table { width: 100%; border-collapse: collapse; margin: 6pt 0 10pt; page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  th, td { border: 1px solid var(--line); padding: 4pt 6pt; text-align: left; vertical-align: top; }
+  th { background: var(--soft); font-weight: 600; }
+  code, pre { font-family: Consolas, "Courier New", monospace; font-size: 9pt; }
+  pre { background: var(--soft); border: 1px solid var(--line); padding: 6pt 8pt; white-space: pre-wrap; margin: 4pt 0 8pt; }
+  .cover { padding-top: 40mm; page-break-after: always; }
+  .subtitle { font-size: 13pt; color: var(--muted); margin-bottom: 24pt; }
+  .meta td:first-child { width: 32%; font-weight: 600; background: var(--soft); }
+  .todo { background: var(--todo); border-left: 4px solid var(--todo-line); padding: 6pt 8pt; margin: 6pt 0 10pt; }
+  .ok { color: var(--ok); font-weight: 600; }
+  .small { font-size: 9pt; color: var(--muted); }
+  .log td { font-size: 8.8pt; }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<section class="cover">
+  <h1>PayLink</h1>
+  <div class="subtitle">Year Work Project, Phase 1 Report<br>Requirements, design and DevOps foundation</div>
+
+  <table class="meta">
+    <tr><td>Repository</td><td>https://github.com/Zienabkhalifa453/PayLink</td></tr>
+    <tr><td>Graded tag</td><td><code>phase-1</code></td></tr>
+    <tr><td>Submission date</td><td>Wednesday 25 November 2026</td></tr>
+    <tr><td>Stack (fixed from Phase 1)</td><td>.NET 8 Web API, PostgreSQL 16, Docker Compose, GitHub Actions, xUnit</td></tr>
+    <tr><td>AI tool</td><td>Claude Code (Claude Opus 5.5)</td></tr>
+  </table>
+
+  <h3>Team and Phase 1 roles</h3>
+  <table>
+    <tr><th>Role (brief §7)</th><th>Student</th><th>Student ID</th></tr>
+    <tr><td>Requirements and product lead</td><td>[name]</td><td>[ID]</td></tr>
+    <tr><td>Quality and DevOps lead</td><td>Zienab Alaa</td><td>[ID]</td></tr>
+    <tr><td>Architecture lead</td><td>[name]</td><td>[ID]</td></tr>
+  </table>
+  <div class="todo"><b>TO DO before submitting:</b> fill in the team names and IDs above, and check who led each role.</div>
+</section>
+
+<!-- ============================ 1. STATUS ============================ -->
+<h2>1. Phase 1 deliverables</h2>
+<table>
+  <tr><th>Deliverable (brief §4)</th><th>Where in the repository</th><th>Status</th></tr>
+  <tr><td>Requirements pack</td><td><code>docs/requirements.md</code></td><td>See section 2</td></tr>
+  <tr><td>Design pack (6 diagrams)</td><td><code>docs/design/</code></td><td>See section 3</td></tr>
+  <tr><td>Dockerfile + docker compose (app + database)</td><td><code>src/PayLink.Api/Dockerfile</code>, <code>mocks/PayLink.MockBillers/Dockerfile</code>, <code>docker-compose.yml</code></td><td class="ok">Done, verified in CI</td></tr>
+  <tr><td>GitHub Actions: build, lint, at least one test on every push</td><td><code>.github/workflows/ci.yml</code></td><td class="ok">Done, green</td></tr>
+  <tr><td>Protected main branch with pull-request rules</td><td>GitHub settings</td><td class="ok">Done, verified</td></tr>
+  <tr><td>Prompt log (at least 5 entries, 2 improved prompts)</td><td><code>docs/prompt-log.md</code></td><td class="ok">Done: 9 entries, 2 improved</td></tr>
+</table>
+
+<!-- ============================ 2. REQUIREMENTS ============================ -->
+<h2>2. Requirements</h2>
+<div class="todo"><b>TO ADD:</b> problem summary, stakeholders, at least 25 user stories (given/when/then), at least 6 measurable NFRs, priorities, and AI questions and ambiguities with decisions. Source: <code>docs/requirements.md</code>.</div>
+
+<!-- ============================ 3. DESIGN ============================ -->
+<h2>3. Design</h2>
+<div class="todo"><b>TO ADD:</b> use-case diagram, domain class diagram, sequence diagrams ("pay a bill", "refund a failed payment"), payment state diagram, ER diagram (10 or more tables), plus the AI errors found in the diagrams and how they were fixed. Source: <code>docs/design/</code>.</div>
+
+<!-- ============================ 4. DEVOPS ============================ -->
+<h2 class="page-break">4. DevOps foundation</h2>
+
+<h3>4.1 Repository structure (modular monolith)</h3>
+<p>One deployable API split into one project per module. A module may use only the shared kernel, never another module; architecture tests fail the build if this rule is broken. This supports the Modifiability NFR (adding a biller touches only Biller Integration and configuration).</p>
+<pre>paylink/
+├── src/
+│   ├── PayLink.Api/            API host: OpenAPI (Swagger), health checks, module wiring
+│   ├── PayLink.SharedKernel/   IModule contract shared by all modules
+│   └── Modules/                Accounts · Catalog · Payments · BillerIntegration ·
+│                               Fees · Notifications · Fraud · Reconciliation
+├── mocks/PayLink.MockBillers/  Mock ElectroCo / AquaCo / TopUpNet / NetCo
+├── tests/
+│   ├── PayLink.Api.IntegrationTests/   boots the real API in memory (3 tests)
+│   └── PayLink.ArchitectureTests/      module boundary rules (4 tests)
+├── .github/workflows/ci.yml   CI pipeline
+├── docker-compose.yml         db + mock-billers + api
+└── docs/                      requirements, design, prompt log, DevOps guide</pre>
+
+<h3>4.2 Docker</h3>
+<table>
+  <tr><th>Service</th><th>Image</th><th>Port</th><th>Health check</th></tr>
+  <tr><td><code>db</code></td><td>postgres:16-alpine</td><td>5432</td><td><code>pg_isready</code></td></tr>
+  <tr><td><code>mock-billers</code></td><td>paylink/mock-billers (multi-stage .NET 8 build)</td><td>5090</td><td><code>GET /health/live</code></td></tr>
+  <tr><td><code>api</code></td><td>paylink/api (multi-stage .NET 8 build, non-root user)</td><td>5080</td><td><code>/health/live</code> (process), <code>/health/ready</code> (database)</td></tr>
+</table>
+<p>The API starts only after the database and mock billers are healthy. Every setting has a default, so a clean clone runs with no <code>.env</code> file:</p>
+<pre>git clone https://github.com/Zienabkhalifa453/PayLink.git paylink && cd paylink
+docker compose up --build        # then open http://localhost:5080/swagger</pre>
+
+<h3>4.3 CI pipeline (GitHub Actions)</h3>
+<p>Runs on every push to any branch, on pull requests to <code>main</code>, and on <code>phase-*</code> / <code>final</code> tags.</p>
+<table>
+  <tr><th>Job</th><th>Steps</th><th>Fails when</th></tr>
+  <tr><td><b>Build, lint, test</b></td><td>restore → <code>dotnet format --verify-no-changes</code> → build (warnings = errors) → tests with coverage → coverage summary + artifact</td><td>style difference, any compiler/analyzer warning, any failing test</td></tr>
+  <tr><td><b>Docker images and stack smoke test</b></td><td>build both images → <code>docker compose up --wait</code> → curl liveness, readiness (DB), mock billers, OpenAPI → tear down</td><td>image does not build, container not healthy in 180 s, any health check fails</td></tr>
+</table>
+<p>Result on <code>main</code>: <span class="ok">both jobs green</span> (7/7 tests passing).</p>
+
+<h3>4.4 Branch protection on <code>main</code></h3>
+<table>
+  <tr><th>Rule</th><th>Setting</th></tr>
+  <tr><td>Require a pull request before merging</td><td>Yes, 1 approval from a teammate</td></tr>
+  <tr><td>Required status checks</td><td><code>Build, lint, test</code> and <code>Docker images and stack smoke test</code></td></tr>
+  <tr><td>Enforcement</td><td>Everyone, including administrators (no bypass)</td></tr>
+  <tr><td>Force pushes / deletion</td><td>Blocked</td></tr>
+</table>
+<p class="small">Verified through the GitHub API on 25 November 2026: <code>protected: true</code>, <code>enforcement_level: everyone</code>, 2 required checks.</p>
+<div class="todo"><b>TO ADD:</b> screenshots of (1) the green pipeline on the <code>phase-1</code> tag and (2) the branch protection rule.</div>
+
+<h3>4.5 Team workflow</h3>
+<p>Issue (user-story template) → branch (<code>feature/…</code>, <code>docs/…</code>, <code>ci/…</code>) → small commits (TDD order: failing test, code, refactor) → pull request (template asks for tests and AI use) → green CI + teammate approval → squash merge. When AI writes more than half of a change, the commit subject names the tool, e.g. <code>(AI: Claude)</code>.</p>
+
+<!-- ============================ 5. PROMPT LOG ============================ -->
+<h2 class="page-break">5. Prompt log</h2>
+<p>Full log with prompts: <code>docs/prompt-log.md</code>. Phase 1 totals: <b>9 entries</b>, 3 accepted, 4 fixed, 2 rejected; <b>2 entries where the first answer was wrong and the prompt was improved</b> (P6, P7); 2 AI errors caught automatically by our own pipeline (P3, P4).</p>
+<table class="log">
+  <tr><th>#</th><th>Stage</th><th>What the AI produced</th><th>Verdict and why</th></tr>
+  <tr><td>P1</td><td>Requirements</td><td>Summary of the brief, deadline warning</td><td><b>Accepted.</b> Checked against brief §2-7.</td></tr>
+  <tr><td>P2</td><td>DevOps</td><td>Asked for the stack first, then generated the modular monolith, compose and 2-job CI</td><td><b>Fixed.</b> Structure kept; P3-P5 corrected.</td></tr>
+  <tr><td>P3</td><td>Lint</td><td>Naming rule forcing <code>_</code> on constants</td><td><b>Fixed.</b> Our lint failed (IDE1006); added a constants rule.</td></tr>
+  <tr><td>P4</td><td>Testing</td><td>Invalid XML comment (<code>--</code>) in coverage settings</td><td><b>Fixed.</b> Tests silently ran 0 times; rewrote the comment, 7/7 run.</td></tr>
+  <tr><td>P5</td><td>Coverage</td><td>Installed a report tool on the laptop</td><td><b>Rejected.</b> HTML coverage generated in CI only.</td></tr>
+  <tr><td>P6</td><td>Git</td><td>Commit with a Claude co-author line, so Claude showed as contributor</td><td><b>Rejected.</b> Improved the prompt; trailer removed, repository recreated.</td></tr>
+  <tr><td>P7</td><td>Git</td><td>Refused to delete the AI-use note (brief §5); offered a short form</td><td><b>Fixed.</b> Subject shortened to <code>(AI: Claude)</code>.</td></tr>
+  <tr><td>P8</td><td>GitHub</td><td>Found the required-checks list empty via the API</td><td><b>Accepted.</b> Real gap; fixed and re-verified.</td></tr>
+  <tr><td>P9</td><td>Docs</td><td>Drafted this log and report</td><td><b>Accepted</b> after team review.</td></tr>
+</table>
+
+<h3>Lessons so far</h3>
+<p><b>Where AI helped:</b> scaffolding a consistent structure quickly and checking settings we could not see in the UI (P8). <b>Where it failed:</b> small configuration details (P3, P4) that looked right but broke tooling, and repository defaults that did not match our needs (P6). <b>What we do now:</b> run lint and tests locally before trusting AI output, check the test count rather than only the exit code, and write structured prompts (role, context, constraints, output format).</p>
+
+</body>
+</html>
