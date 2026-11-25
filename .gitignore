@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+publish/
+*.user
+*.suo
+
+# IDEs
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Test and coverage output
+TestResults/
+coverage*.xml
+*.trx
+
+# Secrets and local overrides: never commit
+.env
+appsettings.*.local.json
+
+# OS
+.DS_Store
+Thumbs.db

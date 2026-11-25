@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Framework + SharedKernel references come from src/Modules/Directory.Build.props. -->
+</Project>

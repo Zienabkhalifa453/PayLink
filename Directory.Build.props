@@ -1,0 +1,21 @@
+<Project>
+  <!--
+    Settings shared by every project in the repository.
+    Projects in sub-folders may add their own Directory.Build.props that imports this one.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Lint: compiler + analyzer + code-style warnings fail the build (locally and in CI). -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- Pin the analyzer rule set so SDK upgrades do not silently add new errors. -->
+    <AnalysisLevel>8.0</AnalysisLevel>
+
+    <Deterministic>true</Deterministic>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- References the API host, which transitively brings in every module. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PayLink.Api\PayLink.Api.csproj" />
+  </ItemGroup>
+</Project>

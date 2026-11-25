@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!--
+    The API host (composition root). It wires modules together and owns
+    cross-cutting concerns: OpenAPI, health checks, configuration.
+    Business logic does NOT live here.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PayLink.SharedKernel\PayLink.SharedKernel.csproj" />
+    <ProjectReference Include="..\Modules\PayLink.Modules.Accounts\PayLink.Modules.Accounts.csproj" />
+    <ProjectReference Include="..\Modules\PayLink.Modules.Catalog\PayLink.Modules.Catalog.csproj" />
+    <ProjectReference Include="..\Modules\PayLink.Modules.Payments\PayLink.Modules.Payments.csproj" />
+    <ProjectReference Include="..\Modules\PayLink.Modules.BillerIntegration\PayLink.Modules.BillerIntegration.csproj" />
+    <ProjectReference Include="..\Modules\PayLink.Modules.Fees\PayLink.Modules.Fees.csproj" />
+    <ProjectReference Include="..\Modules\PayLink.Modules.Notifications\PayLink.Modules.Notifications.csproj" />
+    <ProjectReference Include="..\Modules\PayLink.Modules.Fraud\PayLink.Modules.Fraud.csproj" />
+    <ProjectReference Include="..\Modules\PayLink.Modules.Reconciliation\PayLink.Modules.Reconciliation.csproj" />
+  </ItemGroup>
+</Project>

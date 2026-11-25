@@ -1,0 +1,14 @@
+<Project>
+  <!-- Inherit the repository-wide settings first. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!--
+    Every module gets the ASP.NET Core framework and the shared kernel, and nothing else.
+    Modules must NOT reference each other: they talk through public interfaces / events.
+    This rule is enforced by tests/PayLink.ArchitectureTests.
+  -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)../PayLink.SharedKernel/PayLink.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

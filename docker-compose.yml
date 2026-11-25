@@ -1,0 +1,57 @@
+# PayLink local stack: database + API + mock billers.
+#
+#   docker compose up --build        # start everything (http://localhost:5080/swagger)
+#   docker compose down -v           # stop and delete the database volume
+#
+# Every value has a safe default, so a clean clone works with NO .env file.
+# To override, copy .env.example to .env and edit it.
+
+name: paylink
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-paylink}
+      POSTGRES_USER: ${POSTGRES_USER:-paylink}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-paylink_dev}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mock-billers:
+    build:
+      context: .
+      dockerfile: mocks/PayLink.MockBillers/Dockerfile
+    image: paylink/mock-billers:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    ports:
+      - "${MOCK_BILLERS_PORT:-5090}:8080"
+
+  api:
+    build:
+      context: .
+      dockerfile: src/PayLink.Api/Dockerfile
+    image: paylink/api:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__PayLink: "Host=db;Port=5432;Database=${POSTGRES_DB:-paylink};Username=${POSTGRES_USER:-paylink};Password=${POSTGRES_PASSWORD:-paylink_dev}"
+      Billers__MockBaseUrl: http://mock-billers:8080
+    ports:
+      - "${API_PORT:-5080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      mock-billers:
+        condition: service_healthy
+
+volumes:
+  pgdata:
