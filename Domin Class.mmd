@@ -1,0 +1,350 @@
+classDiagram
+    namespace AccountsAndWallet {
+        class User {
+            <<abstract>>
+            -UUID id
+            -String name
+            -String phoneNumber
+            -String email
+            -AccountStatus status
+        }
+        class Customer {
+            -VerificationLevel verificationLevel
+        }
+        class Agent {
+            -String agentCode
+            -String shopName
+        }
+        class Admin
+        class SupportEmployee
+        class Wallet {
+            -UUID id
+            -String currency
+            +getAvailableBalance() Decimal
+            +getHeldBalance() Decimal
+            +placeHold(amount: Decimal, paymentId: UUID) Hold
+            +releaseHold(holdId: UUID) void
+            +confirmHold(holdId: UUID) void
+        }
+        class LedgerEntry {
+            -UUID id
+            -Decimal amount
+            -EntryType entryType
+            -String balanceBucket
+            -String reference
+            -DateTime createdAt
+        }
+        class Hold {
+            -UUID id
+            -Decimal amount
+            -HoldStatus status
+            -DateTime createdAt
+        }
+        class VerificationLevel {
+            <<enumeration>>
+            BASIC
+            VERIFIED
+        }
+        class AccountStatus {
+            <<enumeration>>
+            ACTIVE
+            BLOCKED
+        }
+        class EntryType {
+            <<enumeration>>
+            TOPUP
+            HOLD
+            HOLD_RELEASE
+            CHARGE
+            FEE_INCOME
+            COMMISSION
+            REFUND
+        }
+        class HoldStatus {
+            <<enumeration>>
+            ACTIVE
+            RELEASED
+            CONFIRMED
+        }
+    }
+
+    namespace BillerCatalog {
+        class Biller {
+            -UUID id
+            -String code
+            -String name
+            -BillerCategory category
+            -Boolean active
+        }
+        class BillerService {
+            -UUID id
+            -String name
+            -Decimal minAmount
+            -Decimal maxAmount
+            -Boolean active
+        }
+        class InputField {
+            -String name
+            -String label
+            -String type
+            -Boolean required
+        }
+        class BillerCategory {
+            <<enumeration>>
+            ELECTRICITY
+            WATER
+            MOBILE
+            INTERNET
+        }
+    }
+
+    namespace PaymentProcessing {
+        class Payment {
+            -UUID id
+            -String reference
+            -Decimal amount
+            -Decimal fee
+            -Decimal totalAmount
+            -DateTime createdAt
+            +transitionTo(event: String) void
+        }
+        class PaymentState {
+            <<interface>>
+            +onEvent(payment: Payment, event: String) PaymentState
+        }
+        class InitiatedState
+        class FundsHeldState
+        class SentToBillerState
+        class CompletedState
+        class FailedState
+        class UnknownState
+        class RejectedState
+        class RefundedState
+        class IdempotencyRecord {
+            -String key
+            -String requestHash
+            -String responseSnapshot
+            -DateTime createdAt
+        }
+        class PaymentAttempt {
+            -UUID id
+            -int attemptNumber
+            -DateTime scheduledAt
+            -String result
+        }
+        class RetryCommand {
+            +execute() void
+        }
+    }
+
+    namespace BillerIntegration {
+        class BillerAdapter {
+            <<interface>>
+            +inquire(inputValue: String) Decimal
+            +pay(reference: String, amount: Decimal) String
+            +queryStatus(reference: String) String
+        }
+        class ElectroCoAdapter
+        class AquaCoAdapter
+        class TopUpNetAdapter
+        class NetCoAdapter
+        class BillerAdapterFactory {
+            +create(billerCode: String) BillerAdapter
+        }
+        class BillerCallback {
+            -UUID id
+            -String externalReference
+            -String status
+            -DateTime receivedAt
+        }
+    }
+
+    namespace FeesAndCommissions {
+        class FeeStrategy {
+            <<interface>>
+            +calculate(amount: Decimal) Decimal
+        }
+        class FixedFeeStrategy
+        class PercentageFeeStrategy
+        class TieredFeeStrategy
+        class PromotionFeeStrategy {
+            -DateTime startDate
+            -DateTime endDate
+        }
+        class CommissionPolicy {
+            -Decimal rate
+            +calculate(fee: Decimal) Decimal
+        }
+        class Commission {
+            -UUID id
+            -Decimal amount
+            -DateTime createdAt
+        }
+    }
+
+    namespace Notifications {
+        class Notification {
+            -UUID id
+            -NotificationChannel channel
+            -String recipient
+            -String message
+            -NotificationStatus status
+            -int retryCount
+            -DateTime createdAt
+        }
+        class NotificationObserver {
+            <<interface>>
+            +onPaymentEvent(payment: Payment, event: String) void
+        }
+        class SmsNotifier
+        class EmailNotifier
+        class PushNotifier
+        class MessageTemplate {
+            -String code
+            -String language
+            -String body
+        }
+        class NotificationChannel {
+            <<enumeration>>
+            SMS
+            EMAIL
+            PUSH
+        }
+        class NotificationStatus {
+            <<enumeration>>
+            PENDING
+            SENT
+            UNDELIVERED
+        }
+    }
+
+    namespace FraudChecks {
+        class FraudRule {
+            <<abstract>>
+            +setNext(next: FraudRule) void
+            +check(payment: Payment) FraudResult
+        }
+        class DailyLimitRule
+        class VelocityRule
+        class BlockedAccountRule
+        class AmountRangeRule
+        class FraudResult {
+            -Boolean passed
+            -String reason
+        }
+    }
+
+    namespace Reconciliation {
+        class SettlementFile {
+            -UUID id
+            -String billerCode
+            -DateTime fileDate
+            -String status
+        }
+        class SettlementRecord {
+            -String billerReference
+            -Decimal amount
+            -String status
+        }
+        class ReconciliationReport {
+            -UUID id
+            -DateTime runDate
+        }
+        class ReconciliationDifference {
+            -UUID id
+            -String type
+            -String notes
+            -Boolean reviewed
+        }
+    }
+
+    namespace CrossCutting {
+        class AuditLog {
+            -UUID id
+            -UUID actorId
+            -String action
+            -String reason
+            -DateTime createdAt
+            -String details
+        }
+        class ConfigurationValue {
+            -String key
+            -String value
+        }
+    }
+
+    User <|-- Customer
+    User <|-- Agent
+    User <|-- Admin
+    User <|-- SupportEmployee
+
+    PaymentState <|.. InitiatedState
+    PaymentState <|.. FundsHeldState
+    PaymentState <|.. SentToBillerState
+    PaymentState <|.. CompletedState
+    PaymentState <|.. FailedState
+    PaymentState <|.. UnknownState
+    PaymentState <|.. RejectedState
+    PaymentState <|.. RefundedState
+
+    BillerAdapter <|.. ElectroCoAdapter
+    BillerAdapter <|.. AquaCoAdapter
+    BillerAdapter <|.. TopUpNetAdapter
+    BillerAdapter <|.. NetCoAdapter
+
+    FeeStrategy <|.. FixedFeeStrategy
+    FeeStrategy <|.. PercentageFeeStrategy
+    FeeStrategy <|.. TieredFeeStrategy
+    FeeStrategy <|.. PromotionFeeStrategy
+
+    FraudRule <|-- DailyLimitRule
+    FraudRule <|-- VelocityRule
+    FraudRule <|-- BlockedAccountRule
+    FraudRule <|-- AmountRangeRule
+
+    NotificationObserver <|.. SmsNotifier
+    NotificationObserver <|.. EmailNotifier
+    NotificationObserver <|.. PushNotifier
+
+    Customer "1" --> "1" Wallet : owns
+    Agent "1" --> "1" Wallet : owns
+
+    Wallet "1" *-- "*" LedgerEntry
+    Wallet "1" *-- "*" Hold
+
+    Biller "1" *-- "1..*" BillerService
+    BillerService "1" *-- "*" InputField
+
+    Payment "*" --> "1" Customer : paidBy
+    Payment "*" --> "0..1" Agent : initiatedBy
+    Payment "*" --> "1" BillerService : pays
+    Payment "1" --> "0..1" Hold : reserves
+    Payment "1" --> "1" IdempotencyRecord : identifiedBy
+    Payment "1" --> "0..1" Commission : earns
+    Commission "*" --> "1" Agent : creditedTo
+
+    Payment "1" o-- "1" PaymentState : currentState
+    Payment "1" *-- "*" PaymentAttempt
+    Payment "1" --> "*" Notification : triggers
+    Payment "0..*" --> "0..*" NotificationObserver : notifies
+
+    LedgerEntry "0..*" --> "0..1" Payment : relatesTo
+
+    SettlementFile "1" *-- "*" SettlementRecord
+    SettlementRecord "0..1" --> "0..1" Payment : matches
+
+    ReconciliationReport "1" *-- "*" ReconciliationDifference
+
+    BillerService "*" --> "1" FeeStrategy : usesFee
+    PromotionFeeStrategy "1" o-- "1" FeeStrategy : decorates
+
+    FraudRule "0..1" o-- "0..1" FraudRule : next
+
+    Notification --> MessageTemplate : uses
+    RetryCommand --> Payment : retries
+    ReconciliationDifference --> Payment : concerns
+    BillerCallback --> Payment : updates
+    AuditLog --> User : performedBy
+
+    BillerAdapterFactory ..> BillerAdapter : creates
+    CommissionPolicy ..> Commission : calculates

@@ -1,0 +1,53 @@
+sequenceDiagram
+    autonumber
+
+    participant Trigger as RetryScheduler / ReconciliationService
+    participant PaymentService
+    participant WalletService
+    participant Ledger
+    participant NotificationService
+    participant AuditLog
+    actor Customer
+
+    Trigger->>PaymentService: Report biller refusal or reconciliation result
+    Note over Trigger,PaymentService: Valid refund trigger: biller refused, or Unknown later refused / no payment found
+
+    PaymentService->>PaymentService: Load Payment and inspect current state
+
+    alt Payment is SentToBiller or Unknown with confirmed refusal / no payment found
+        PaymentService->>PaymentService: Set state to Failed
+        Note over PaymentService: Payment state: Failed
+    else Payment is Unknown with no confirmed refusal
+        Note over PaymentService: Payment state: Unknown
+        Note over PaymentService,WalletService: Do nothing&#59; keep funds held and wait for reconciliation
+    end
+
+    alt Payment is already Refunded (duplicate trigger)
+        PaymentService->>PaymentService: Ignore duplicate refund request
+        PaymentService->>AuditLog: Log duplicate trigger&#59; no second refund
+    else Payment is Failed and not yet Refunded
+        PaymentService->>WalletService: Release hold (352.50 EGP)
+
+        Note over WalletService,Ledger: One hold release produces exactly 2 ledger entries
+        WalletService->>Ledger: Decrease held balance by 352.50 EGP
+        Ledger-->>WalletService: Entry recorded
+        WalletService->>Ledger: Increase available balance by 352.50 EGP
+        Ledger-->>WalletService: Entry recorded
+
+        WalletService-->>PaymentService: Hold released successfully
+        PaymentService->>PaymentService: Set state to Refunded
+        Note over PaymentService: Payment state: Refunded
+
+        PaymentService->>AuditLog: Record refund (who, when, why, amount)
+        PaymentService->>NotificationService: Send refund SMS
+        PaymentService->>NotificationService: Send refund push
+
+        loop 3 times&#59; retry failed SMS delivery
+            NotificationService->>NotificationService: Retry SMS delivery
+        end
+        Note over NotificationService: If SMS still fails after 3 retries, marked undelivered
+
+        NotificationService->>Customer: Notify refund outcome through SMS and push
+    end
+
+    Note over PaymentService,Customer: Completed payments are never refunded by this flow

@@ -1,0 +1,139 @@
+sequenceDiagram
+    autonumber
+
+    actor Customer as Sara
+    participant MobileApp
+    participant PaymentAPI as REST Controller
+    participant PaymentService as Payment Processing
+    participant BillerCatalog
+    participant FeeService as Fees and Commissions
+    participant FraudChain as Fraud Checks
+    participant WalletService as Accounts and Wallet
+    participant BillerAdapter as Biller Integration
+    participant ElectroCo as External Biller (REST/JSON)
+    participant NotificationService as Notifications
+    participant AuditLog
+
+    Customer->>MobileApp: Select ElectroCo and enter meter number
+    MobileApp->>PaymentAPI: Inquire bill (ElectroCo, meter number)
+
+    PaymentAPI->>BillerCatalog: Get biller and validate configuration
+    BillerCatalog-->>PaymentAPI: Return biller details, active status and required fields
+    Note over PaymentAPI,BillerCatalog: Validate active biller and required meter number
+
+    PaymentAPI->>PaymentService: Process bill inquiry
+    PaymentService->>BillerAdapter: Create adapter via Factory and inquire bill
+    BillerAdapter->>ElectroCo: REST/JSON inquiry (meter number)
+    ElectroCo-->>BillerAdapter: Bill amount = 350.00 EGP
+    BillerAdapter-->>PaymentService: Return bill inquiry result
+
+    PaymentService->>FeeService: Calculate fee (ElectroCo, 350.00 EGP)
+    FeeService-->>PaymentService: Fee = 2.50 EGP, total = 352.50 EGP
+
+    PaymentService-->>PaymentAPI: Return bill amount, fee and total
+    PaymentAPI-->>MobileApp: Display bill details
+    MobileApp-->>Customer: Show 350.00 + 2.50 = 352.50 EGP
+    Customer->>MobileApp: Confirm payment
+
+    MobileApp->>PaymentAPI: Submit payment (Idempotency-Key)
+    PaymentAPI->>PaymentService: Process payment (Idempotency-Key)
+
+    PaymentService->>PaymentService: Check idempotency key
+    alt Idempotency key already exists
+        PaymentService-->>PaymentAPI: Return original payment result
+        PaymentAPI-->>MobileApp: Return original result (no new charge)
+        MobileApp-->>Customer: Display original result
+    else New idempotency key
+        Note over PaymentService: One payment request produces exactly 1 Payment
+        PaymentService->>PaymentService: Create Payment
+        Note over PaymentService: Payment state: Initiated
+
+        PaymentService->>FraudChain: Run daily limit, velocity and blocked-account checks
+        Note over FraudChain: Velocity rule: more than 5 payments in 60 seconds
+        FraudChain-->>PaymentService: Return fraud check result
+
+        alt A fraud check fails
+            PaymentService->>PaymentService: Set state to Rejected
+            Note over PaymentService: Payment state: Rejected
+            PaymentService-)NotificationService: Send rejection SMS and push with reason
+            PaymentService-)AuditLog: Record rejection and reason
+            PaymentService-->>PaymentAPI: Return payment error
+            PaymentAPI-->>MobileApp: Return rejection
+            MobileApp-->>Customer: Display rejection reason
+        else Fraud checks pass
+            PaymentService->>WalletService: Hold 352.50 EGP
+            WalletService->>WalletService: Check available balance
+
+            alt Insufficient funds
+                WalletService-->>PaymentService: Hold rejected (insufficient funds)
+                PaymentService->>PaymentService: Set state to Rejected
+                Note over PaymentService: Payment state: Rejected
+                PaymentService-)NotificationService: Send rejection SMS and push
+                PaymentService-)AuditLog: Record insufficient-funds rejection
+                PaymentService-->>PaymentAPI: Return insufficient-funds error
+                PaymentAPI-->>MobileApp: Return rejection
+                MobileApp-->>Customer: Display insufficient funds
+            else Sufficient funds
+                Note over WalletService: Exactly 1 hold produces 2 ledger entries
+                WalletService->>WalletService: Decrease available balance
+                WalletService->>WalletService: Increase held balance
+                WalletService-->>PaymentService: Hold created successfully
+                Note over PaymentService: Payment state: FundsHeld
+
+                PaymentService->>BillerAdapter: Send payment (unique reference, 10-second timeout)
+                Note over PaymentService: Payment state: SentToBiller
+                BillerAdapter->>ElectroCo: Submit payment (352.50 EGP, unique reference)
+
+                alt Biller confirms
+                    ElectroCo-->>BillerAdapter: Payment confirmed
+                    BillerAdapter-->>PaymentService: Return confirmation
+                    PaymentService->>PaymentService: Set state to Completed
+                    Note over PaymentService: Payment state: Completed
+
+                    PaymentService->>WalletService: Capture hold and finalize charge
+                    WalletService->>WalletService: Convert held amount into final charge
+                    WalletService->>WalletService: Credit PayLink fee income (2.50 EGP)
+                    WalletService-)AuditLog: Record charge, hold capture and fee income
+
+                    opt Agent is involved (0..1 commission per payment)
+                        PaymentService->>FeeService: Calculate agent commission
+                        FeeService-->>PaymentService: Commission = 40% of 2.50 EGP (1.00 EGP)
+                        PaymentService->>WalletService: Credit agent wallet (1.00 EGP)
+                        WalletService-)AuditLog: Record agent commission credit
+                    end
+
+                    PaymentService-)NotificationService: Send final-outcome SMS
+                    PaymentService-)NotificationService: Send final-outcome push
+
+                else Biller refuses
+                    ElectroCo-->>BillerAdapter: Payment refused (reason)
+                    BillerAdapter-->>PaymentService: Return refusal and reason
+                    PaymentService->>PaymentService: Set state to Failed
+                    Note over PaymentService: Payment state: Failed
+                    PaymentService->>PaymentService: Hand over to refund flow (Diagram B)
+                    PaymentService-)NotificationService: Notify Customer of failure and reason
+                    PaymentService-)AuditLog: Record biller refusal
+
+                else No answer within 10 seconds
+                    Note over BillerAdapter,PaymentService: Biller response timeout: 10 seconds
+                    BillerAdapter-->>PaymentService: No response (timeout)
+                    PaymentService->>PaymentService: Set state to Unknown
+                    Note over PaymentService: Payment state: Unknown
+                    Note over PaymentService,WalletService: The 352.50 EGP remains held&#59; no refund
+                    PaymentService-)NotificationService: Notify Customer: "Payment is being processed"
+                    PaymentService-)AuditLog: Record unknown outcome
+
+                    loop 3 times: after 1, 5 and 15 minutes
+                        PaymentService->>BillerAdapter: Re-query payment status
+                        BillerAdapter->>ElectroCo: Query by unique reference
+                        ElectroCo-->>BillerAdapter: Return current payment status
+                        BillerAdapter-->>PaymentService: Return status
+                    end
+                    Note over PaymentService: Unknown remains held until confirmation or reconciliation
+                end
+            end
+        end
+    end
+
+    PaymentAPI-->>MobileApp: Return payment result
+    MobileApp-->>Customer: Display final payment result
