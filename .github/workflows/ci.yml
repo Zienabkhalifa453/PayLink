@@ -13,7 +13,7 @@ on:
     branches: ["**"]
     tags: ["phase-*", "final"]
   pull_request:
-    branches: [main]
+    branches: [main, devops]
   workflow_dispatch:
 
 # A newer push to the same branch cancels the older, still-running pipeline.

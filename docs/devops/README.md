@@ -90,12 +90,26 @@ Add the instructor and TAs under **Settings → Collaborators** (read access).
 
 ## 5. Team workflow
 
+Two long-lived branches:
+
+| Branch | Purpose | Who can push |
+|---|---|---|
+| `main` | Released, graded code. Tags `phase-1` and `final` are made here. | **Nobody directly.** Only merged pull requests from `devops`. |
+| `devops` | Integration branch: all daily work lands here first. | Team members (directly or through feature-branch PRs). |
+
+```mermaid
+flowchart LR
+    F[feature/... docs/... ci/...] -->|PR| D[devops]
+    D -->|PR + green CI + 1 approval| M[main]
+    M -->|tag| T[phase-1 / final]
+```
+
 1. Pick or create an issue (use the **User story** template).
-2. Create a branch from `main`: `feature/us-09-pay-bill`, `fix/...`, `docs/...`, `ci/...`.
+2. Create a branch from `devops`: `feature/us-09-pay-bill`, `fix/...`, `docs/...`, `ci/...`.
 3. Commit small steps. For TDD features, commit in order: `test: ... (failing)`, then `feat: ...`, then `refactor: ...`.
-4. If AI wrote more than half of a change, name it in the commit message, e.g. `feat: add fee strategies (AI: Claude Opus 5.5)`.
-5. Open a PR (the template asks for tests and AI use). CI must be green and a teammate must approve.
-6. Squash-merge into `main`.
+4. If AI wrote more than half of a change, name it in the commit message, e.g. `feat: add fee strategies (AI: Claude)`.
+5. Open a PR into `devops` (the template asks for tests and AI use). CI runs on it.
+6. When `devops` is ready to deliver, open a PR from `devops` into `main`. CI must be green and a teammate must approve.
 
 ## 6. Submission checklist (`phase-1` tag)
 
