@@ -1,0 +1,143 @@
+flowchart LR
+
+    %% =========================
+    %% ACTORS
+    %% =========================
+
+    Customer["Customer"]:::actor
+    Agent["Agent"]:::actor
+    Admin["Admin"]:::actor
+    SupportEmployee["SupportEmployee"]:::actor
+
+    Biller["Biller"]:::actor
+    ElectroCo["ElectroCo"]:::actor
+    AquaCo["AquaCo"]:::actor
+    TopUpNet["TopUpNet"]:::actor
+    NotificationProvider["NotificationProvider"]:::actor
+    Scheduler["Scheduler"]:::actor
+
+    %% =========================
+    %% SYSTEM BOUNDARY & USE CASES
+    %% =========================
+
+    subgraph PayLink_System["PayLink System"]
+        direction TB
+
+        UC1(["Register Account (FR-1)"])
+        UC2(["Upgrade Verification Level (FR-2)"])
+        UC3(["View Wallet Balance and History (FR-3)"])
+        UC4(["Top Up Wallet (FR-4)"])
+        UC5(["View Billers and Input Fields (FR-7)"])
+        UC6(["Run Bill Inquiry (FR-8, FR-16)"])
+        UC7(["Pay Bill (FR-9, FR-11)"])
+        UC8(["Check Idempotency Key (FR-10)"])
+        UC9(["Run Fraud Checks (FR-18, FR-19)"])
+        UC10(["Hold Funds (FR-12)"])
+        UC11(["Send Payment to Biller (FR-15)"])
+        UC12(["Send Notification (FR-22)"])
+        UC13(["Write Audit Log (FR-25)"])
+        UC14(["Release Hold and Refund Failed Payment (FR-12)"])
+        UC15(["Handle Unknown Payment (FR-13)"])
+        UC16(["Pay on Behalf of Customer (FR-17)"])
+        UC17(["Credit Agent Commission (FR-17)"])
+        UC18(["Receive Biller Callback (FR-14)"])
+        UC19(["Request Refund of Completed Payment (FR-27)"])
+        UC20(["Approve Refund (FR-27)"])
+        UC21(["Manage Billers and Services (FR-6)"])
+        UC22(["Edit Fee and Limit Values (FR-24)"])
+        UC23(["View Daily Totals (FR-28)"])
+        UC24(["Search Payment by Reference (FR-20)"])
+        UC25(["Block Account (FR-21)"])
+        UC26(["Unblock Account (FR-21)"])
+        UC27(["Re-query Unknown Payment (FR-13)"])
+        UC28(["Run Reconciliation (FR-26)"])
+        UC29(["Review Reconciliation Differences (FR-26)"])
+        UC30(["Retry Failed Notification (FR-23)"])
+    end
+
+    %% =========================
+    %% ACTOR ASSOCIATIONS
+    %% =========================
+
+    Customer --- UC1
+    Customer --- UC2
+    Customer --- UC3
+    Customer --- UC4
+    Customer --- UC5
+    Customer --- UC6
+    Customer --- UC7
+    Customer --- UC19
+
+    Agent --- UC3
+    Agent --- UC4
+    Agent --- UC5
+    Agent --- UC6
+    Agent --- UC16
+
+    Admin --- UC2
+    Admin --- UC21
+    Admin --- UC22
+    Admin --- UC23
+
+    SupportEmployee --- UC20
+    SupportEmployee --- UC24
+    SupportEmployee --- UC25
+    SupportEmployee --- UC26
+    SupportEmployee --- UC29
+
+    Biller --- UC6
+    Biller --- UC11
+    Biller --- UC27
+    Biller --- UC28
+
+    TopUpNet --- UC18
+
+    NotificationProvider --- UC12
+
+    Scheduler --- UC27
+    Scheduler --- UC28
+    Scheduler --- UC30
+
+    %% =========================
+    %% INCLUDE RELATIONSHIPS
+    %% =========================
+
+    UC7 -.->|"&lt;&lt;include&gt;&gt;"| UC6
+    UC7 -.->|"&lt;&lt;include&gt;&gt;"| UC8
+    UC7 -.->|"&lt;&lt;include&gt;&gt;"| UC9
+    UC7 -.->|"&lt;&lt;include&gt;&gt;"| UC10
+    UC7 -.->|"&lt;&lt;include&gt;&gt;"| UC11
+    UC7 -.->|"&lt;&lt;include&gt;&gt;"| UC12
+    UC7 -.->|"&lt;&lt;include&gt;&gt;"| UC13
+
+    UC16 -.->|"&lt;&lt;include&gt;&gt;"| UC17
+
+    UC14 -.->|"&lt;&lt;include&gt;&gt;"| UC13
+
+    UC21 -.->|"&lt;&lt;include&gt;&gt;"| UC13
+    UC22 -.->|"&lt;&lt;include&gt;&gt;"| UC13
+    UC25 -.->|"&lt;&lt;include&gt;&gt;"| UC13
+    UC26 -.->|"&lt;&lt;include&gt;&gt;"| UC13
+
+    %% =========================
+    %% EXTEND RELATIONSHIPS
+    %% =========================
+
+    UC14 -.->|"&lt;&lt;extend&gt;&gt; [biller refuses]"| UC7
+    UC15 -.->|"&lt;&lt;extend&gt;&gt; [no answer within 10 seconds]"| UC7
+    UC16 -.->|"&lt;&lt;extend&gt;&gt; [payment made at an agent terminal]"| UC7
+    UC30 -.->|"&lt;&lt;extend&gt;&gt; [notification delivery fails]"| UC12
+
+    %% =========================
+    %% ACTOR GENERALIZATION
+    %% =========================
+
+    ElectroCo ==>|"generalizes"| Biller
+    AquaCo ==>|"generalizes"| Biller
+    TopUpNet ==>|"generalizes"| Biller
+
+    %% =========================
+    %% ACTOR STYLING
+    %% =========================
+
+    classDef actor fill:#f4f4f4,stroke:#555555,stroke-width:1.5px,color:#222222
